@@ -3,7 +3,7 @@ const logger = require("morgan");
 const mongoose = require("mongoose");
 const compression = require("compression");
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
 
 mongoose.connect(process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/budget", {
   useNewUrlParser: true,

@@ -3,7 +3,7 @@
 <h3 align="center">::online/offline budget tracker:: </h3>
 
   # Description
-  A application, created with MongoDB and Mongoose, that allows users to add,subtract expenses and deposits with offline capabilities. 
+  Budget Tracker is a progressive web application that allows users to track their budgets by adding, subtracting expenses and deposits. The app is built with offline capabiities where transations are stores in the indexedDB and updated in the database when user comes back online.
 
   # Table of Contents
   * [Site](#site)
@@ -13,11 +13,9 @@
   * [License](#license)
   
   # Site 
-  [Pizza Hunt Github Repo](https://github.com/Jessiferizzo/pizza-hunt.git)
+  [Budget Tracker Github](https://github.com/Jessiferizzo/budget-tracker-PWA.git)
   
-  Deployed Heroku Website:
-
-  [https://pizza-hunt-allpizzas.herokuapp.com/](https://github.com/Jessiferizzo/pizza-hunt.git)
+  [Website for Budget Tracker-PWA](https://floating-coast-44947.herokuapp.com/)
 
 
   ## Built With:
@@ -28,9 +26,7 @@
   `npm install`
   
   # Usage
-  1. First user must clone the repo, then run `npm install`
-
-  2. Start up MongoDB server by typing `mongod` in CLI.
+ To start the server, run `npm start`. Then navigate browser to http://localhost:3001 to interact with the app.
   
 
 📷 

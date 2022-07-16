@@ -17,9 +17,6 @@
   
   [Website for Budget Tracker-PWA](https://floating-coast-44947.herokuapp.com/)
 
-
-  ## Built With:
-  Node, Express, NoSQL, MongoDB, Mongoose, MongoDBAtlas, Heroku
   
   # Installation
   💾 

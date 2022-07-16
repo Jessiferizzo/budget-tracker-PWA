@@ -1,103 +1,107 @@
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker
+    .register('service-worker.js')
+    .then((registration) => {
+      console.log('Service Worker Registered!');
+    })
+    .catch((error) => {
+      console.log('Service Worker Registration Failed!');
+      console.log(error);
+    });
+}
+
 let transactions = [];
 let myChart;
+const transactionForm = createTransactionForm();
+const transactionApi = createTransactionApi();
 
-fetch("/api/transaction")
-  .then(response => {
-    return response.json();
-  })
-  .then(data => {
+initTransactions();
+
+document.querySelector("#add-btn").onclick = function () {
+  sendTransaction(true);
+};
+
+document.querySelector("#sub-btn").onclick = function () {
+  sendTransaction(false);
+};
+
+function createTransactionForm() {
+  const nameEl = document.querySelector("#t-name");
+  const amountEl = document.querySelector("#t-amount");
+  const errorEl = document.querySelector(".form .error");
+
+  const showError = (message) => {
+    errorEl.textContent = message;
+  };
+
+  // return false if invalid and display validation message
+  const validate = () => {
+    // validate form
+    if (nameEl.value === "" || amountEl.value === "") {
+      showError("Missing Information");
+      return false;
+    }
+    showError("");
+    return true;
+  };
+
+  // return transaction object from form input
+  const transaction = () => {
+    return {
+      name: nameEl.value,
+      value: amountEl.value,
+      date: new Date().toISOString()
+    };
+  };
+
+  // clear form inputs
+  const clear = () => {
+    nameEl.value = "";
+    amountEl.value = "";
+    showError("");
+  };
+
+  return Object.freeze({ transaction, validate, clear, showError });
+}
+
+function createTransactionApi() {
+  const create = (transaction) => {
+    return fetch("/api/transaction", {
+      method: "POST",
+      body: JSON.stringify(transaction),
+      headers: {
+        Accept: "application/json, text/plain, */*",
+        "Content-Type": "application/json"
+      }
+    }).then((response) => {
+      return response.json();
+    });
+  };
+
+  const fetchAll = () => {
+    return fetch("/api/transaction").then((response) => {
+      return response.json();
+    });
+  };
+  return Object.freeze({ create, fetchAll });
+}
+
+function initTransactions() {
+  transactionApi.fetchAll().then((data) => {
     // save db data on global variable
     transactions = data;
 
-    populateTotal();
-    populateTable();
-    populateChart();
-  });
-
-function populateTotal() {
-  // reduce transaction amounts to a single total value
-  let total = transactions.reduce((total, t) => {
-    return total + parseInt(t.value);
-  }, 0);
-
-  let totalEl = document.querySelector("#total");
-  totalEl.textContent = total;
-}
-
-function populateTable() {
-  let tbody = document.querySelector("#tbody");
-  tbody.innerHTML = "";
-
-  transactions.forEach(transaction => {
-    // create and populate a table row
-    let tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${transaction.name}</td>
-      <td>${transaction.value}</td>
-    `;
-
-    tbody.appendChild(tr);
-  });
-}
-
-function populateChart() {
-  // copy array and reverse it
-  let reversed = transactions.slice().reverse();
-  let sum = 0;
-
-  // create date labels for chart
-  let labels = reversed.map(t => {
-    let date = new Date(t.date);
-    return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
-  });
-
-  // create incremental values for chart
-  let data = reversed.map(t => {
-    sum += parseInt(t.value);
-    return sum;
-  });
-
-  // remove old chart if it exists
-  if (myChart) {
-    myChart.destroy();
-  }
-
-  let ctx = document.getElementById("myChart").getContext("2d");
-
-  myChart = new Chart(ctx, {
-    type: 'line',
-      data: {
-        labels,
-        datasets: [{
-            label: "Total Over Time",
-            fill: true,
-            backgroundColor: "#6666ff",
-            data
-        }]
-    }
+    renderTransactionsChart();
   });
 }
 
 function sendTransaction(isAdding) {
-  let nameEl = document.querySelector("#t-name");
-  let amountEl = document.querySelector("#t-amount");
-  let errorEl = document.querySelector(".form .error");
-
-  // validate form
-  if (nameEl.value === "" || amountEl.value === "") {
-    errorEl.textContent = "Missing Information";
+  if (!transactionForm.validate()) {
     return;
-  }
-  else {
-    errorEl.textContent = "";
   }
 
   // create record
-  let transaction = {
-    name: nameEl.value,
-    value: amountEl.value,
-    date: new Date().toISOString()
-  };
+  const transaction = transactionForm.transaction();
 
   // if subtracting funds, convert amount to negative number
   if (!isAdding) {
@@ -111,43 +115,93 @@ function sendTransaction(isAdding) {
   populateChart();
   populateTable();
   populateTotal();
-  
-  // also send to server
-  fetch("/api/transaction", {
-    method: "POST",
-    body: JSON.stringify(transaction),
-    headers: {
-      Accept: "application/json, text/plain, */*",
-      "Content-Type": "application/json"
-    }
-  })
-  .then(response => {    
-    return response.json();
-  })
-  .then(data => {
-    if (data.errors) {
-      errorEl.textContent = "Missing Information";
-    }
-    else {
-      // clear form
-      nameEl.value = "";
-      amountEl.value = "";
-    }
-  })
-  .catch(err => {
-    // fetch failed, so save in indexed db
-    saveRecord(transaction);
 
-    // clear form
-    nameEl.value = "";
-    amountEl.value = "";
+  // also send to server
+  transactionApi
+    .create(transaction)
+    .then((data) => {
+      if (data.errors) {
+        transactionForm.showError("Missing Information");
+      } else {
+        transactionForm.clear();
+      }
+    })
+    .catch(() => {
+      // fetch failed, so save in indexed db
+      saveRecord(transaction);
+      transactionForm.clear();
+    });
+}
+
+function renderTransactionsChart() {
+  populateTotal();
+  populateTable();
+  populateChart();
+}
+
+function populateTotal() {
+  // reduce transaction amounts to a single total value
+  const total = transactions.reduce((total, t) => {
+    return total + parseInt(t.value);
+  }, 0);
+
+  const totalEl = document.querySelector("#total");
+  totalEl.textContent = total;
+}
+
+function populateTable() {
+  const tbody = document.querySelector("#tbody");
+  tbody.innerHTML = "";
+
+  transactions.forEach((transaction) => {
+    // create and populate a table row
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${transaction.name}</td>
+      <td>${transaction.value}</td>
+    `;
+
+    tbody.appendChild(tr);
   });
 }
 
-document.querySelector("#add-btn").onclick = function() {
-  sendTransaction(true);
-};
+function populateChart() {
+  // copy array and reverse it
+  const reversed = transactions.slice().reverse();
+  let sum = 0;
 
-document.querySelector("#sub-btn").onclick = function() {
-  sendTransaction(false);
-};
+  // create date labels for chart
+  const labels = reversed.map((t) => {
+    const date = new Date(t.date);
+    return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+  });
+
+  // create incremental values for chart
+  const data = reversed.map((t) => {
+    sum += parseInt(t.value);
+    return sum;
+  });
+
+  // remove old chart if it exists
+  if (myChart) {
+    myChart.destroy();
+  }
+
+  const ctx = document.getElementById("myChart").getContext("2d");
+
+  myChart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Total Over Time",
+          fill: true,
+          backgroundColor: "#6666ff",
+          data
+        }
+      ]
+    }
+  });
+}
+
